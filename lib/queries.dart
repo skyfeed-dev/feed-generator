@@ -1,7 +1,7 @@
 // ! This file contains all SurrealQL queries used for @skyfeed.xyz custom feeds
 
 final surrealQueries = {
-  // ! Discover: Posts a user might enjoy, based on like history. Works by collecting your past likes of less popular posts, searching the network for users who have a similar like history, aggregating their recent likes and then ranking based on the sum of all the curator weights.
+// ! Discover: Posts a user might enjoy, based on like history. Works by collecting your past likes of less popular posts, searching the network for users who have a similar like history, aggregating their recent likes and then ranking based on the sum of all the curator weights.
   'discover':
       r'''LET $liked_posts = (SELECT ->(like WHERE createdAt > (time::now() - 168h) AND meta::tb(out) == 'post') as likes FROM $feeduserdid).likes.out;
 LET $liked_posts2 = (SELECT * FROM (SELECT id, type::thing('like_count_view', [id]).likeCount AS likeCount FROM $liked_posts) WHERE likeCount > 1 ORDER BY likeCount ASC LIMIT 64).id;
@@ -31,11 +31,11 @@ SELECT id,createdAt FROM post WHERE record != NONE AND meta::tb(record) == 'feed
   'catch-up':
       r'select subject as id, likeCount from like_count_view where likeCount > 68 and subject.createdAt > (time::now() - 24h) order by likeCount desc limit 1000;',
 
-  // ! Catch Up Weekly: Most liked posts from the last 7 days
+// ! Catch Up Weekly: Most liked posts from the last 7 days
   'catch-up-weekly':
       r'select subject as id, likeCount from like_count_view where likeCount > 130 and subject.createdAt > (time::now() - 168h) order by likeCount desc limit 1000;',
 
-  // ! Art New: Powers the @bsky.art feed
+// ! Art New: Powers the @bsky.art feed
   'art-new':
       r'''LET $artists = (select ->follow.out as following from did:plc_y7crv2yh74s7qhmtx3mvbgv5).following;
 LET $posts = array::flatten(array::flatten((SELECT (SELECT ->posts.out as posts FROM $parent.id) AS posts FROM $artists).posts.posts));
@@ -44,12 +44,13 @@ LET $hashtag_posts = (SELECT ->usedin.out AS posts FROM hashtag:art).posts;
 return SELECT id,createdAt FROM array::distinct(array::concat($hashtag_posts,array::concat($posts,$reposts))) WHERE count(images) > 0 ORDER BY createdAt DESC LIMIT 1000;
 ''',
 
-  // ! Mutuals: Posts from mutual follows
+// ! Mutuals: Posts from mutual follows
   'mutuals':
       r'''LET $res = (select ->follow.out as following, <-follow.in as follows from $feeduserdid);
 LET $mutuals = array::intersect($res.follows, $res.following);
 SELECT id,createdAt FROM array::flatten(array::flatten((SELECT (SELECT ->(posts WHERE createdAt > (time::now() - 168h)).out as posts FROM $parent.id) AS posts FROM $mutuals).posts.posts)) ORDER BY createdAt DESC LIMIT 1000;''',
-  // ! Re+Posts: Posts and Reposts from people you are following
+
+// ! Re+Posts: Posts and Reposts from people you are following
   're-plus-posts': r'''
 LET $following = (select ->follow.out as following FROM $feeduserdid).following;
 
@@ -59,16 +60,16 @@ LET $posts = SELECT id,createdAt FROM array::flatten(array::flatten((SELECT (SEL
 SELECT * FROM array::concat($reposts,$posts) ORDER BY createdAt DESC LIMIT 1000;
 ''',
 
-  // ! OnlyPosts: Only posts from people you are following, nothing else
+// ! OnlyPosts: Only posts from people you are following, nothing else
   'only-posts':
       r'''LET $following = (select ->follow.out as following FROM $feeduserdid).following;
 SELECT id,createdAt FROM array::flatten(array::flatten((SELECT (SELECT ->(posts WHERE createdAt > (time::now() - 72h)).out as posts FROM $parent.id) AS posts FROM $following).posts.posts)) ORDER BY createdAt DESC LIMIT 1000;''',
 
-  // ! What's warm: Posts with 6+ likes from the last hour
+// ! What's warm: Posts with 6+ likes from the last hour
   'whats-warm':
       r'SELECT subject as id, subject.createdAt as createdAt FROM like_count_view WHERE likeCount > 5 AND subject.createdAt > (time::now() - 1h) order by createdAt desc;',
 
-  // ! What's Reposted: Posts with 5+ reposts
+// ! What's Reposted: Posts with 5+ reposts
   'whats-reposted':
       'select id,createdAt from post where parent == NONE and createdAt > (time::now() - 6h) and count(<-repost) > 4 order by createdAt desc;',
 };
